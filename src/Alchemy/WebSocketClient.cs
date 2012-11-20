@@ -23,6 +23,7 @@ namespace Alchemy
         public OnEventDelegate OnDisconnect = x => { };
         public OnEventDelegate OnReceive = x => { };
         public OnEventDelegate OnSend = x => { };
+        public OnEventDelegate OnFailedConnection = x => { };
 
         private TcpClient _client;
         private bool _connecting;
@@ -78,10 +79,12 @@ namespace Alchemy
                     waiting = waiting.Add(timeSpan);
                     Thread.Sleep(timeSpan.Milliseconds);
                 }
+                if (_connecting) throw new Exception("Timeout");
             }
             catch (Exception)
             {
                 Disconnect();
+                OnFailedConnection(null);
             }
         }
 
@@ -98,6 +101,8 @@ namespace Alchemy
             catch (Exception)
             {
                 Disconnect();
+                OnFailedConnection(null);
+                return;
             }
 
             using (_context = new Context(null, _client))
@@ -255,7 +260,9 @@ namespace Alchemy
             ReadyState = ReadyStates.CLOSING;
 
             bytes[0] = 0x88;
-            _context.UserContext.Send(bytes);
+            if (_context != null && _context.UserContext != null)
+                _context.UserContext.Send(bytes);
+
             _client.Close();
             _client = null;
             ReadyState = ReadyStates.CLOSED;

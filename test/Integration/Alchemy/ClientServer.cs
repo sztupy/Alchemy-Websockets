@@ -12,6 +12,7 @@ namespace Alchemy
         private WebSocketClient _client;
         private bool _forever;
         private bool _clientDataPass = true;
+        private bool _hasDisconnected;
 
         [TestFixtureSetUp]
         public void SetUp()
@@ -96,6 +97,21 @@ namespace Alchemy
                 _clientDataPass = false;
             }
             Assert.IsTrue(_clientDataPass);
+        }
+
+        private void OnClientDisconnect(UserContext context)
+        {
+            _hasDisconnected = true;
+        }
+
+        [Test]
+        public void ClientCanCheckIfServerIsNotAvailable()
+        {
+            _hasDisconnected = false;
+            var client2 = new WebSocketClient("ws://127.0.0.1:50000/path") { OnFailedConnection = OnClientDisconnect, ConnectTimeout = new System.TimeSpan(0,0,0,1) };
+            client2.Connect();
+            Thread.Sleep(3000);
+            Assert.IsTrue(_hasDisconnected);
         }
     }
 }
